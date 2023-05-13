@@ -1,35 +1,68 @@
 import server from "./server";
-import * as secp from "ethereum-cryptography/secp256k1";
-import { toHex } from "ethereum-cryptography/utils";
+import React, { useEffect } from "react";
+import { getPublicKey } from "ethereum-cryptography/secp256k1";
+import { bytesToHex } from "ethereum-cryptography/utils";
 
-function Wallet({ address, setAddress, balance, setBalance, privateKey, setPrivateKey }) {
-  async function onChange(evt) {
-    const privateKey = evt.target.value;
-    setPrivateKey(privateKey);
-    const address = toHex(secp.getPublicKey(privateKey));
-    setAddress(address);
-    if (address) {
+function Wallet({
+  address,
+  setAddress,
+  balance,
+  setBalance,
+  privateKey,
+  setPrivateKey
+}) {
+  async function getAddressAndBalance() {
+    try {
+      let publicKey = bytesToHex(getPublicKey(privateKey));
+      setAddress(`${publicKey}`);
       const {
         data: { balance },
       } = await server.get(`balance/${address}`);
       setBalance(balance);
-    } else {
+    } catch (err) {
+      setAddress("Invalid private key");
       setBalance(0);
     }
   }
 
+  async function onChangePrivateKey(evt) {
+    const key = evt.target.value;
+    setPrivateKey(key);
+  }
+
+  useEffect(() => {
+    getAddressAndBalance();
+  }, [privateKey, address]);
+
+  const borderObject = (() => {
+    if (address === "Invalid private key") {
+      return { borderColor: "red" };
+    } else {
+      return { borderColor: "green" };
+    }
+  })();
+
   return (
-    <div className="container wallet">
+    <div className="container wallet" style={borderObject}>
       <h1>Your Wallet</h1>
 
       <label>
-        Private Key
-        <input placeholder="Type in a private key" value={privateKey} onChange={onChange}></input>
+        Wallet Address (auto generated)
+        <input
+          placeholder="auto generate the address according to your privateKey"
+          value={address}
+          disabled
+        ></input>
       </label>
 
-      <div>
-        Address: {address.slice(0, 10)}...
-      </div>
+      <label>
+        Private Key
+        <input
+          placeholder="Type your private key"
+          value={privateKey}
+          onChange={onChangePrivateKey}
+        ></input>
+      </label>
 
       <div className="balance">Balance: {balance}</div>
     </div>
